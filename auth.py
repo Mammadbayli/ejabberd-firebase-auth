@@ -11,10 +11,17 @@ import json
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s',
-                    filename='extauth.log',
+                    filename='/home/ubuntu/extauth.log',
                     filemode='a')
 
-API_KEY = os.environ["FIREBASE_API_KEY"]
+
+API_URL = os.environ["NFS_API_URL"]
+API_KEY = os.environ["NFS_API_KEY"]
+
+headers = {
+            "Content-Type": "application/json",
+            "Authorization": API_KEY
+}
 
 def read():
     logging.info('Ready to read')
@@ -23,56 +30,35 @@ def read():
     pkt = sys.stdin.read(pkt_size)
     cmd = pkt.split(':')[0]
 
+    global headers
     if cmd == 'auth':
         u, s, p = pkt.split(':', 3)[1:]
-        url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + API_KEY
-        headers = {
-            "Content-Type": "application/json"
-            }
+        url = API_URL + "/user/authenticate"
+
         data = json.dumps({
-                "email": u + "@" + s,
+                "username": u,
                 "password": p,
-             })
+            })
+
         logging.info('Body: ' + str(data))
         data = data.encode("utf-8")
         req = request.Request(url, data, headers, method='POST')
         try:
             with request.urlopen(req) as response:
-                try:
-                    resp = json.loads(response.read())
-                    logging.info('Response: ' + str(resp))
-                    write(True)
-                    return read()
-                except ValueError:
-                    write(False)
-                    return read()
+                write(True)
         except error.HTTPError as e:
             logging.info('Error: ' + str(e.read().decode()))
             write(False)
             return read()
     elif cmd == 'isuser':
         u, s = pkt.split(':', 2)[1:]
-        url = "https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=" + API_KEY
-        headers = {
-            "Content-Type": "application/json"
-            }
-        data = json.dumps({
-                "identifier": u + "@" + s,
-                "continueUri": "http://localhost:8080/app",
-             })
-        logging.info('Body: ' + str(data))
+        url = API_URL + "/user/" + u
+        data = ""
         data = data.encode("utf-8")
-        req = request.Request(url, data, headers, method='POST')
+        req = request.Request(url, data, headers, method='GET')
         try:
             with request.urlopen(req) as response:
-                try:
-                    resp = json.loads(response.read())
-                    logging.info('Response: ' + str(resp))
-                    write(resp["registered"])
-                    return read()
-                except ValueError:
-                    write(False)
-                    return read()
+                write(True)
         except error.HTTPError as e:
             logging.info('Error: ' + str(e.read().decode()))
             write(False)
@@ -82,12 +68,10 @@ def read():
         write(True)
     elif cmd == 'tryregister':
         u, s, p = pkt.split(':', 3)[1:]
-        url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + API_KEY
-        headers = {
-            "Content-Type": "application/json"
-            }
+        url = API_URL + "/user"
+
         data = json.dumps({
-                "email": u + "@" + s,
+                "username": u,
                 "password": p,
              })
         logging.info('Body: ' + str(data))
@@ -95,21 +79,24 @@ def read():
         req = request.Request(url, data, headers, method='POST')
         try:
             with request.urlopen(req) as response:
-                try:
-                    resp = json.loads(response.read())
-                    logging.info('Response: ' + str(resp))
-                    write(True)
-                    return read()
-                except ValueError:
-                    write(False)
-                    return read()
+                write(True)
         except error.HTTPError as e:
             logging.info('Error: ' + str(e.read().decode()))
             write(False)
             return read()
     elif cmd == 'removeuser':
         u, s = pkt.split(':', 2)[1:]
-        write(True)
+        url = API_URL + "/user/" + u
+        data = ""
+        data = data.encode("utf-8")
+        req = request.Request(url, data, headers, method='DELETE')
+        try:
+            with request.urlopen(req) as response:
+                write(True)
+        except error.HTTPError as e:
+            logging.info('Error: ' + str(e.read().decode()))
+            write(False)
+            return read()
     elif cmd == 'removeuser3':
         u, s, p = pkt.split(':', 3)[1:]
         write(True)
@@ -120,8 +107,10 @@ def read():
 
 def write(result):
     if result:
+        logging.info('Wrote True')
         sys.stdout.write('\x00\x02\x00\x01')
     else:
+        logging.info('Wrote False')
         sys.stdout.write('\x00\x02\x00\x00')
     sys.stdout.flush()
 
