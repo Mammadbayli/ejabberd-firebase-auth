@@ -7,6 +7,8 @@ echo "24auth:sadf:afsf:Sfdffhgfh" | python3 auth.py
 
 
 
+More info:
+
 https://www.ejabberd.im/files/doc/dev.html#htoc9
 
 
