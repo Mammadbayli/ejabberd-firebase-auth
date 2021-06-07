@@ -1,6 +1,10 @@
 # ejabberd-firebase-auth
 A python script for authenticating ejabberd users with Firebase Authentication
 
+How to test on cmd:
+
+echo "24auth:sadf:afsf:Sfdffhgfh" | python3 auth.py
+
 
 
 https://www.ejabberd.im/files/doc/dev.html#htoc9
