@@ -8,10 +8,13 @@ import urllib.error as error
 import os
 import logging
 import json
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(message)s',
-                    filename='/home/ubuntu/extauth.log',
+                    filename='extauth.log',
                     filemode='a')
 
 
@@ -24,7 +27,6 @@ headers = {
 }
 
 def read():
-    logging.info('Ready to read')
     (pkt_size,) = struct.unpack('>H', sys.stdin.buffer.read(2))
     logging.info('Packet size: ' + str(pkt_size))
     pkt = sys.stdin.read(pkt_size)
@@ -37,6 +39,7 @@ def read():
 
         data = json.dumps({
                 "username": u,
+                "hostname": s,
                 "password": p,
             })
 
@@ -52,7 +55,8 @@ def read():
             return read()
     elif cmd == 'isuser':
         u, s = pkt.split(':', 2)[1:]
-        url = API_URL + "/user/" + u
+        url = API_URL + "/user/" + s+ "/"+ u
+        logging.info(url)
         data = ""
         data = data.encode("utf-8")
         req = request.Request(url, data, headers, method='GET')
@@ -72,6 +76,7 @@ def read():
 
         data = json.dumps({
                 "username": u,
+                "hostname": s,
                 "password": p,
              })
         logging.info('Body: ' + str(data))
@@ -86,7 +91,7 @@ def read():
             return read()
     elif cmd == 'removeuser':
         u, s = pkt.split(':', 2)[1:]
-        url = API_URL + "/user/" + u
+        url = API_URL + "/user/" + s + "/"+ u
         data = ""
         data = data.encode("utf-8")
         req = request.Request(url, data, headers, method='DELETE')
@@ -107,17 +112,14 @@ def read():
 
 def write(result):
     if result:
-        logging.info('Wrote True')
         sys.stdout.write('\x00\x02\x00\x01')
     else:
-        logging.info('Wrote False')
         sys.stdout.write('\x00\x02\x00\x00')
     sys.stdout.flush()
 
 
 # read config
 try:
-    logging.info('Start read')
     read()
 except struct.error:
     logging.info(struct.error)
